@@ -16,7 +16,7 @@ var http = require('http');
 
 app.use(bodyParser());
 
-//йсм╪
+//О©╫О©╫м╪
 app.use(views(__dirname + '/app/views'/*, { map: {html: 'nunjucks' }}*/))
 app.use(staticServer(path.join(__dirname, 'public')));
 
@@ -24,7 +24,7 @@ app.use(function *(next){
     yield next
 });
 
-//б╥си
+//б╥О©╫О©╫
 require('./config/routes')(router)
 
 app
@@ -32,20 +32,13 @@ app
     .use(router.allowedMethods())
 
 //socket
-var server = require('http').Server(app.callback());
-/*var socket = require('./app/api/socket/socket')
-socket.socketio(server);*/
-//var io = require('socket.io')(server);
+var server = require('http').createServer(app.callback()).listen(3000);
 
-
-//main processing file
 var chat = require('./routes/chat');
-
 
 chat.initialize(server);
 
-
-server.listen(3000);
+//server.listen(3000);
 
 console.log('Listening');
 

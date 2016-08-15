@@ -19,10 +19,15 @@ chat.currentRoom = {};
 //room list
 chat.roomList = ['Lobby'];
 
+chat.nsp = chat.io
+
 //chat initialization with the passing http object
 chat.initialize = function(http) {
 	this.io = socketIo(http);
-	this.ioListen();
+
+    //this.io.attach({port: 3000});
+
+    this.ioListen();
 }
 
 // major socket listening method
@@ -30,7 +35,11 @@ chat.ioListen = function() {
 	
 	var that = this;
 
-	this.io.on('connection', function(socket){
+    var nps = this.io.of('/live')
+
+    chat.nsp = nps
+
+    this.nsp.on('connection', function(socket){
 		
 		that.assignRoom(socket);
 
@@ -60,7 +69,7 @@ chat.userMsg = function(socket) {
 	socket.on('chat message', function(msg){
 		msg = that.userName[socket.id] + ' said: ' + msg;
 
-		that.io.to(that.currentRoom[socket.id]).emit('chat message', msg);
+		that.nsp.to(that.currentRoom[socket.id]).emit('chat message', msg);
 	});
 
 }
@@ -71,7 +80,7 @@ chat.sysMsg = function(socket) {
 	var that = this;
 
 	socket.on('sys message', function(msg){
-		that.io.to(that.currentRoom[socket.id]).emit('sys message', msg);
+		that.nsp.to(that.currentRoom[socket.id]).emit('sys message', msg);
 	});	
 	
 }
@@ -85,7 +94,7 @@ chat.assignGuestName = function(socket) {
 
 	var msg = this.userName[socket.id] + ' enter the room! Welcome!';
 
-	this.io.to(this.currentRoom[socket.id]).emit('new user', msg);
+	this.nsp.to(this.currentRoom[socket.id]).emit('new user', msg);
 
 }
 
@@ -97,7 +106,7 @@ chat.disconnect = function(socket) {
 	socket.on('disconnect', function(){
 		var msg = that.userName[socket.id] + ' just left';
 
-		that.io.emit('exit user', msg);
+		that.nsp.emit('exit user', msg);
 
 		var nameIndex = that.usedName.indexOf(that.userName[socket.id]);
 
@@ -149,7 +158,7 @@ chat.changeRoom = function(socket, msg) {
 
 	var sysMsg = that.userName[socket.id] + ' left room ' + that.currentRoom[socket.id];
 
-	this.io.to(this.currentRoom[socket.id]).emit('sys message', sysMsg);
+	this.nsp.to(this.currentRoom[socket.id]).emit('sys message', sysMsg);
 
 	if (msg != 'room') {
 		socket.leave(this.currentRoom[socket.id], function(){
@@ -198,7 +207,7 @@ chat.changeRoom = function(socket, msg) {
 
 			socket.emit('change room name', {'msg': msg, 'roomList': that.roomList});
 			
-			that.io.emit('room list', that.roomList);
+			that.nsp.emit('room list', that.roomList);
 
 		});
 	}
