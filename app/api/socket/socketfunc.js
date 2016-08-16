@@ -12,14 +12,15 @@ var onlinesum = 0;
 var users = [];//在线users
 var clients = [];//在线socket
 var client  = config.client;
-
-
-exports.socketHallFuc = function(nsp,client) {
-    socketMain(nsp,client);
+var chat = {};
+chat.nsp = '';
+chat.nsp = '';
+chat.socketHallFuc = function * (nsp,client) {
+     yield this.socketMain(nsp,client);
 }
 
-function socketMain(nsp,client){
-    nsp.on('connection',function(socket){
+chat.socketMain = function * (nsp,client){
+    nsp.on('connection',function (socket){
         console.log('connection');
         if(!nsp.name){
             return
@@ -30,8 +31,10 @@ function socketMain(nsp,client){
         var keyPrim     = "KKDanMaKuOnlineUser";
         var key = '';//在线人数key
         var keyRoom = '';//房间人数key
+        chat.nsp = nsp;
+        chat.NSP = NSP;
 
-        socket.on('userInit',function(data){//监听 客户端的消息
+        socket.on('userInit',function (data){//监听 客户端的消息
             console.log('socketid-----------------------'+socket.id);
             console.log('token-----------------------'+data.token);
             console.log('openid-----------------------'+data.openid);
@@ -44,6 +47,22 @@ function socketMain(nsp,client){
             }
             key = keyPrim+NSP+data.room;
             keyRoom = 'RoomPeopleDetail'+NSP+data.room;
+/*            try{
+                var obj = yield client.HGETALL(keyRoom)
+                if(obj){
+                    var userBox = [];
+                    for(var key in obj){
+                        if(!key.match(/time/)){
+                            userBox.push(JSON.parse(obj[key]));
+                        }
+                    }
+                    users = userBox;
+                }else{
+                    users = [];
+                }
+            }catch(err){
+                console.log(err);
+            }*/
 
             client.HGETALL(keyRoom,function(err, obj){
                 if(err){
@@ -167,6 +186,7 @@ function socketMain(nsp,client){
                 //debug('所有的任务完成了',res);
             });
         });
+
 
         /*订阅房间*/
         socket.on('subscribe', function(data) {
@@ -332,3 +352,10 @@ function socketMain(nsp,client){
     });
 
 }
+
+
+chat.userInit = function(socket){
+
+}
+
+module.exports = chat;
