@@ -17,7 +17,7 @@ var http = require('http');
 app.use(bodyParser());
 
 //��ͼ
-app.use(views(__dirname + '/app/views'/*, { map: {html: 'nunjucks' }}*/))
+app.use(views(__dirname + '/app/views', { map: {html: 'ejs' }}))
 app.use(staticServer(path.join(__dirname, 'public')));
 
 app.use(function *(next){
@@ -32,13 +32,18 @@ app
     .use(router.allowedMethods())
 
 //socket
-var server = require('http').createServer(app.callback()).listen(3000);
+var server = require('http').createServer(app.callback());
 
-var chat = require('./routes/chat');
+var socket = require('./app/api/socket/socket')
 
-chat.initialize(server);
+socket.socketio(server);
 
-//server.listen(3000);
+
+/*var chat = require('./routes/chat');
+
+ chat.initialize(server);*/
+
+server.listen(3000);
 
 console.log('Listening');
 

@@ -1,6 +1,9 @@
 
 var config = require('../task/config');
 var socketF = require('./socketfunc');
+var chat = require('../../../routes/chat');
+
+
 var redis = require('socket.io-redis');
 
 var client = config.client;
@@ -18,6 +21,11 @@ exports.socketio = function(server) {
 
         var lnsp = io.of(nameBox[item]);
 
+        //chat.initialize(io,lnsp);
         socketF.socketHallFuc(lnsp,client);
     }
+
+    //chat.initialize(io,'/live');
+
+
 }

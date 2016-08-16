@@ -8,6 +8,7 @@ angular.module('chatModule').factory('socket',function($rootScope,$location) {
         var namespace = $rootScope.param.namespace;
     }
 
+    console.log(namespace);
     var socket = io.connect('/'+namespace);
 
     return {
