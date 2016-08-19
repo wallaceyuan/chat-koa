@@ -2,7 +2,9 @@ var config = require('./config');
 var client  = config.client;
 var user = require('./user');
 var iconv = require('iconv-lite');
-
+var wrapper = require('co-redis');
+var client  = config.client;
+var redisCo = wrapper(client);
 
 
 exports.Violator = function(done,data){
@@ -60,4 +62,22 @@ exports.historyData = function(room,socket){
 	});
 }
 
-
+exports.getRoomPeople = function *(chat,sid){
+	try{
+		var obj = yield redisCo.HGETALL(chat.keyRoom[sid]);
+		if(obj){
+			var userBox = [];
+			for(var key in obj){
+				if(!key.match(/time/)){
+					userBox.push(JSON.parse(obj[key]));
+				}
+			}
+			users = userBox;
+		}else{
+			users = [];
+		}
+		return users
+	}catch(err){
+		console.log(err);
+	}
+}

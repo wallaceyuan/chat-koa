@@ -15,16 +15,24 @@ var staticServer = require('koa-static');
 var http = require('http');
 
 app.use(bodyParser());
-
-//��ͼ
+app.keys = ['secret1'];
+app.use(session(app));
+//视图
 app.use(views(__dirname + '/app/views', { map: {html: 'ejs' }}))
 app.use(staticServer(path.join(__dirname, 'public')));
+
 
 app.use(function *(next){
     yield next
 });
 
-//·��
+//错误处理机制
+/*app.use(function *() {
+    throw new Error();
+});*/
+
+
+//路由
 require('./config/routes')(router)
 
 app
@@ -37,11 +45,6 @@ var server = require('http').createServer(app.callback());
 var socket = require('./app/api/socket/socket')
 
 socket.socketio(server);
-
-
-/*var chat = require('./routes/chat');
-
- chat.initialize(server);*/
 
 server.listen(3000);
 

@@ -6,6 +6,7 @@
 var Index = require('../app/controllers/index')
 var Chat = require('../app/controllers/chat')
 
+
 module.exports = function(router) {
 
     router.get('/', Index.index)

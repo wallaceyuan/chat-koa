@@ -8,7 +8,7 @@ var redis = require('socket.io-redis');
 var client = config.client;
 var host = config.host;
 
-exports.socketio = function(server) {
+exports.socketio = function (server) {
 
     var io = require('socket.io')(server);
 
