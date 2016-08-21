@@ -136,13 +136,6 @@ chat.disconnect = function(socket){
         if(!chat.userData[sid]){
             return
         }
-        client.HDEL(chat.keyRoom[sid],chat.userCode[sid],function(err, replies){
-            if(err){
-                console.log(err);
-            }else{
-                //console.log('userCode',userCode,replies);
-            }
-        });
 
         if(socket.id)
             delete clients[socket.id];
@@ -153,37 +146,35 @@ chat.disconnect = function(socket){
 
         var queryLey = chat.userCode[sid].split('time')[0];
 
-        client.HGETALL(chat.keyRoom[sid],function(err, obj){
-            if(err){
-                console.log(err);
-            }else{
-                if(obj){
-                    for(var keypeople in obj){
-                        if(keypeople.split('time')[0] == queryLey){
-                            quweyFlag = false;
-                        }
+        co(function *(){
+
+            yield redisCo.HDEL(chat.keyRoom[sid],chat.userCode[sid]);
+
+            var obj = yield redisCo.HGETALL(chat.keyRoom[sid])
+            if(obj){
+                for(var keypeople in obj){
+                    if(keypeople.split('time')[0] == queryLey){
+                        quweyFlag = false;
                     }
                 }
             }
-
-            client.decr(chat.key[sid], function(error, val){
-                if(parseInt(val) < 1) client.set(chat.key[sid], 0);
-                onlinesum = val;
-                if(quweyFlag){
-                    if(chat.roomName[sid]!=''){
-                        socket.broadcast.in(chat.roomName[sid]).emit('people.del', {id:socket.id,user:chat.userName[sid],content:'下线了',onlinesum:onlinesum});
-                    }else{
-                        socket.broadcast.emit('people.del', {id:socket.id,user:chat.userName[sid],content:'下线了',onlinesum:onlinesum});
-                    }
+            var val = yield redisCo.decr(chat.key[sid])
+            if(parseInt(val) < 1) client.set(chat.key[sid], 0);
+            onlinesum = val;
+            if(quweyFlag){
+                if(chat.roomName[sid]!=''){
+                    socket.broadcast.in(chat.roomName[sid]).emit('people.del', {id:socket.id,user:chat.userName[sid],content:'下线了',onlinesum:onlinesum});
                 }else{
-                    if(chat.roomName[sid]!=''){
-                        socket.broadcast.in(chat.roomName[sid]).emit('people.del', {onlinesum:onlinesum});
-                    }else{
-                        socket.broadcast.emit('people.del', {onlinesum:onlinesum});
-                    }
+                    socket.broadcast.emit('people.del', {id:socket.id,user:chat.userName[sid],content:'下线了',onlinesum:onlinesum});
                 }
-            });
-        });
+            }else{
+                if(chat.roomName[sid]!=''){
+                    socket.broadcast.in(chat.roomName[sid]).emit('people.del', {onlinesum:onlinesum});
+                }else{
+                    socket.broadcast.emit('people.del', {onlinesum:onlinesum});
+                }
+            }
+        })
     });
 }
 
