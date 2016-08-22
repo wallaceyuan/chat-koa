@@ -217,12 +217,13 @@ chat.userInit = function (socket){
 }
 
 chat.onlineRequest = function(socket){
+    var sid = socket.id
     socket.on('onlineRequest',function(data){
         var key = data.key;
         co(function *(){
-            var val = redisCo.get(key)
+            var val = yield redisCo.get(key)
             if(parseInt(val) < 1){
-                client.set(key, 0);
+                chat.client[sid].set(key, 0);
                 onlinesum = 0;
             }else{
                 onlinesum = parseInt(val);
