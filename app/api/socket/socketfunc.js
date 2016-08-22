@@ -8,11 +8,11 @@ var config = require('../task/config');
 var asy = require('../task/asyncTask.js');
 var co = require('co')
 var wrapper = require('co-redis');
-
+var _ = require('lodash')
 
 var onlinesum = 0;
 var users = [];//在线users
-var clients = [];//在线socket
+//var clients = [];//在线socket
 var client  = config.client;
 var redisCo = wrapper(client);
 
@@ -20,6 +20,7 @@ var keyPrim = "KKDanMaKuOnlineUser"
 var chat = {};
 chat.nsp = {};
 chat.userCode = {}
+chat.clients = {}
 chat.black = {}
 chat.roomName = {},chat.userData = {},chat.userName = {}
 chat.NSP = {}, chat.key = {};//在线人数key
@@ -73,7 +74,7 @@ chat.socketMain = function * (nsp,client){
 
 chat.unsubscribe = function(socket){
     socket.on('unsubscribe', function(data) {
-        roomName = data.room;
+        var roomName = data.room;
         if(roomName == "" || roomName == null){
             console.log("empty Room");
         }else{
@@ -84,7 +85,7 @@ chat.unsubscribe = function(socket){
 
 chat.subscribe = function(socket){
     socket.on('subscribe', function(data) {
-        roomID = data.room;
+        var roomID = data.room;
         if(roomID == "" || roomID == null){
             //console.log("empty Room");
         }else{
@@ -102,12 +103,7 @@ chat.createMessage = function(socket){
         }else{
             try{
                 var data2 = {socketid:chat.userData[sid].id,cid: chat.roomName[sid], openid: '',checked:0,violate:0,createTime:moment().unix(), place:chat.NSP[sid]+':'+chat.roomName[sid]};
-                for(var item in chat.userData[sid]){
-                    data2[item]=chat.userData[sid][item];
-                }
-                for(var item in data2){
-                    data[item]=data2[item];
-                }
+                data = _.assignIn(data,chat.userData[sid],data2);
             }catch(e){
                 console.log('client create message err');
                 return;
@@ -138,7 +134,7 @@ chat.disconnect = function(socket){
         }
 
         if(socket.id)
-            delete clients[socket.id];
+            delete chat.clients[socket.id];
 
         console.log('leave socket',socket.id);
 
@@ -162,10 +158,11 @@ chat.disconnect = function(socket){
             if(parseInt(val) < 1) client.set(chat.key[sid], 0);
             onlinesum = val;
             if(quweyFlag){
+                var res = {id:socket.id,user:chat.userName[sid],content:'下线了',onlinesum:onlinesum}
                 if(chat.roomName[sid]!=''){
-                    socket.broadcast.in(chat.roomName[sid]).emit('people.del', {id:socket.id,user:chat.userName[sid],content:'下线了',onlinesum:onlinesum});
+                    socket.broadcast.in(chat.roomName[sid]).emit('people.del', res);
                 }else{
-                    socket.broadcast.emit('people.del', {id:socket.id,user:chat.userName[sid],content:'下线了',onlinesum:onlinesum});
+                    socket.broadcast.emit('people.del', res);
                 }
             }else{
                 if(chat.roomName[sid]!=''){
@@ -196,7 +193,6 @@ chat.userInit = function (socket){
         chat.keyRoom[sid] = 'RoomPeopleDetail'+chat.NSP[sid]+data.room;
 
         co(function *(){
-            var users = yield asy.getRoomPeople(chat,sid)
             if(data.room!=''){
                 socket.join(data.room);
             }
@@ -210,94 +206,9 @@ chat.userInit = function (socket){
                     asy.Allowed(arg,done,data);
                 },
             ],function(err,res){
-                if(err){
-                    console.log('-------------',err,'-------------');
-                    co(function *(){
-                        var val = yield redisCo.get(chat.key[sid])
-                        if(parseInt(val) < 1){
-                            client.set(chat.key[sid], 0);
-                            onlinesum = 0;
-                        }else{
-                            onlinesum = parseInt(val);
-                        }
-                        chat.black[sid] = true,chat.roomName[sid] = data.room,clients[sid] = socket;
-                        socket.emit('userWebStatus',{status:err.code,msg:err.msg,users:users,onlinesum:onlinesum});
-                        socket.emit('userStatus',{status:err.code,msg:err.msg});
-                        asy.historyData(chat.NSP[sid]+roomName,socket);
-                    })
-                }else{
-                    chat.black[sid] = false;var uif;/*将数组封装成用户信息*/
-                    var openid,token;
-                    try{
-                        uif = JSON.parse(res.data);
-                    }catch(e){
-                        socket.emit('userStatus',{status: 705, msg: "参数传入错误2"});
-                        return;
-                    }
-                    chat.roomName[sid] = data.room, chat.userName[sid] = uif.nickName,clients[sid] = socket;
-                    if(data.openid){
-                        openid = data.openid,token = '';
-                    }else{
-                        openid = '',token = data.token;
-                    }
-
-                    /*判断重复用户*/
-                    var judge = users.filter(function(user){
-                        if(user){
-                            if(parseInt(uif.uid) == 1){
-                                return chat.roomName[sid] == user.room && uif.openid == user.openid;
-                            }else{
-                                return chat.roomName[sid] == user.room && uif.uid == user.uid;
-                            }
-                        }
-                    });
-
-
-                    client.incr(chat.key[sid], function(error, val){
-                        onlinesum = val;
-                        chat.userData[sid] = {"token":token,"openid":openid,"id": socket.id,"room":chat.roomName[sid],"posterURL":uif.posterURL,
-                            "tel":uif.tel,"uid":uif.uid,"nickName":chat.userName[sid],"onlinesum":onlinesum};
-                        if(data.token){
-                            users = users.filter(function (user) {
-                                return user.uid != uif.uid
-                            });
-                        }else{
-                            users = users.filter(function (user) {
-                                return user.openid != openid
-                            });
-                        }
-
-                        users.push(chat.userData[sid]);
-
-                        var uifD = openid?openid:uif.uid;
-                        if(judge.length == 0){
-                            chat.userCode[sid] = uifD;
-                            if(chat.roomName[sid]!=''){
-                                socket.broadcast.in(chat.roomName[sid]).emit('joinChat',chat.userData[sid]);
-                            }else{
-                                socket.broadcast.emit('joinChat',chat.userData[sid]);
-                            }
-                        }else{
-                            chat.userCode[sid] = uifD+'time'+moment().unix();
-                            if(chat.roomName[sid]!=''){
-                                socket.broadcast.in(chat.roomName[sid]).emit('joinChat',{onlinesum:val});
-                            }else{
-                                socket.broadcast.emit('joinChat',{onlinesum:val});
-                            }
-                        }
-
-                        client.HMSET(chat.keyRoom[sid],chat.userCode[sid],JSON.stringify(chat.userData[sid]),function(err, replies){
-                            if(err){
-                                console.log(err);
-                            }else{
-                                console.log(replies);
-                            }
-                        });
-                        socket.emit('userStatus',{status:0,msg:'用户验证成功',userData:{nickName:chat.userName[sid],posterURL:uif.posterURL}});
-                        socket.emit('userWebStatus',{status:0,msg:'用户验证成功',userData:chat.userData[sid],users:users,onlinesum:onlinesum});
-                        asy.historyData(chat.NSP[sid]+chat.roomName[sid],socket);
-                    });
-                }
+                co( function *(){
+                    yield asy.userInit(err,res,socket,sid,data,chat)
+                })
                 console.log('-------------asy success-------------'/*,res*/);
                 //debug('所有的任务完成了',res);
             });
@@ -346,7 +257,7 @@ chat.messageError = function(socket){
     socket.on('messageError',function(data){
         console.log('messageError',data,data.socketid);
         try{
-            var errSocket = clients[data.socketid];
+            var errSocket = chat.clients[data.socketid];
             var err = {status:data.status,msg:data.msg}
             console.log('-------------messageError-errSocket-------------',data.socketid);
             if(errSocket){

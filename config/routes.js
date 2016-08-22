@@ -23,41 +23,4 @@ module.exports = function(router) {
 
     router.get('/chats/broadcast/:room',Chat.wechat);
 
-    /*
-    router.route('/user/get').post(function(req,res){
-        console.log('post-code',req.body.code);
-        User.findById({code:req.body.code},function(err,user){
-            if(user.length == 0){
-                res.send({
-                    "code": 400,
-                    "msg": "fail"
-                });
-            }else{
-                res.send({
-                    "code": 0,
-                    "msg": "success",
-                    "data": JSON.stringify(user[0])
-                });
-            }
-        });
-    });
-
-    router.route('/message/valide').post(function(req,res){
-        console.log('post-message',req.body.message);
-
-        User.findById({code:req.body.code},function(err,user){
-            if(user.length == 0){
-                res.send({
-                    "code": 400,
-                    "msg": "fail"
-                });
-            }else{
-                res.send({
-                    "code": 0,
-                    "msg": "success",
-                    "data": JSON.stringify(user[0])
-                });
-            }
-        });
-    });*/
 }
